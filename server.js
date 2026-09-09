@@ -1,38 +1,23 @@
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 10000;
-const TOKEN = '21191517';
-
-let queue = [];
-
+// Asegúrate de tener esto configurado al inicio de tu app de Express:
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Recibe los datos enviados por TikFinity
-app.get('/webhook', (req, res) => {
-    if (req.query.token !== TOKEN) {
-        return res.status(403).send('Token inválido');
-    }
-
-    const username = req.query.username;
+// Modifica o reemplaza tu ruta /webhook por esta:
+app.all('/webhook', (req, res) => {
+    // Captura el usuario ya sea por la URL (query) o por el cuerpo JSON que envía TikFinity (body)
+    const username = req.query.username || req.body.uniqueId || req.body.username || req.body.user;
+    
     if (username) {
-        queue.push(username);
-        console.log(`Usuario agregado a la cola: ${username}`);
-        res.status(200).send('Guardado');
+        // Limpiar la arroba por si viene incluida
+        const cleanName = username.replace(/^@/, '');
+        
+        // Agregar a la cola de Render
+        queue.push({ username: cleanName });
+        console.log("Usuario recibido y añadido a la cola:", cleanName);
+        
+        res.status(200).send("OK");
     } else {
-        res.status(400).send('Falta el usuario');
+        console.log("Webhook recibido pero sin usuario. Body:", req.body, "Query:", req.query);
+        res.status(400).send("Falta el usuario");
     }
-});
-
-// Entrega la cola a Roblox Studio
-app.get('/queue', (req, res) => {
-    if (req.query.token !== TOKEN) {
-        return res.status(403).send('Token inválido');
-    }
-
-    res.json(queue);
-    queue = []; // Limpia la cola después de entregarla para que no se repitan
-});
-
-app.listen(PORT, () => {
-    console.log(`Servidor escuchando en puerto ${PORT}`);
 });
